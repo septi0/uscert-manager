@@ -52,7 +52,7 @@ class Certbot:
             
         self._logger.info(f'Generating certificate for "{name}". Members: {config["domains"]}')
             
-        # self._certbot_exec(command)
+        self._certbot_exec(command)
         
     def renew_certs(self) -> None:
         command = [
@@ -66,7 +66,7 @@ class Certbot:
         
         self._logger.info('Renewing certificates')
         
-        # self._certbot_exec(command)
+        self._certbot_exec(command)
         
     def revoke_cert(self, name: str) -> None:
         command = [
@@ -81,7 +81,7 @@ class Certbot:
         
         self._logger.info(f'Removing certificate "{name}"')
         
-        # self._certbot_exec(command)
+        self._certbot_exec(command)
     
     def get_authenticators(self) -> None:        
         # get authenticators list fro certbot cli
