@@ -9,9 +9,6 @@ with open("uscertbot_manager/info.py") as fp:
 with open("README.md", "r") as f:
     long_description = f.read()
 
-with open("requirements.txt") as f:
-    requirements = [line.strip() for line in f]
-
 setup(
     name=info['__package_name__'],
     version=info['__version__'],
@@ -23,7 +20,6 @@ setup(
     author_email=info['__author_email__'],
     author_url=info['__author_url__'],
     python_requires='>=3.9',
-    install_requires=requirements,
     packages=[
         'uscertbot_manager',
     ],
