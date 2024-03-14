@@ -27,6 +27,8 @@ class UsCertbotManager:
         self._pip_manager = PipManager(params.get('pip_bin'), logger=self._logger)
 
     def run(self) -> None:
+        user = os.getuid()
+        self._logger.debug(f'Starting uscertbot-manager as user {user}')
         # install any required plugins
         self._ensure_plugins()
         

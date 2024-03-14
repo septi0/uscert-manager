@@ -29,7 +29,7 @@ class PipManager:
         # create subprocess
         exec = subprocess.run(cmd_to_exec, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         
-        self._logger.debug(f'Certbot command return code: {exec.returncode}')
+        self._logger.debug(f'Pip command return code: {exec.returncode}')
         
         # if return code is not 0, raise error
         if exec.returncode != 0:
