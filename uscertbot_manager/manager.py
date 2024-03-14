@@ -216,6 +216,6 @@ class UsCertbotManager:
                 
             sleep_time = (next_run - now).seconds
             
-            self._logger.debug(f'Next renew certs run in {sleep_time} seconds')
+            self._logger.info(f'Next certs check in {sleep_time} seconds')
             
             await asyncio.sleep(sleep_time)
