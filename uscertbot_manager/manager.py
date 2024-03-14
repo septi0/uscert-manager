@@ -28,7 +28,8 @@ class UsCertbotManager:
 
     def run(self) -> None:
         user = os.getuid()
-        self._logger.debug(f'Starting uscertbot-manager as user {user}')
+        self._logger.info(f'Starting uscertbot-manager as user {user}')
+        
         # install any required plugins
         self._ensure_plugins()
         
