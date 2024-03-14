@@ -54,6 +54,10 @@ class CertsCache:
         return self.CACHE_MISS
     
     def get_all(self) -> list:
+        # check if cache dir exists
+        if not os.path.exists(self._cache_dir):
+            return []
+            
         # get all cache keys
         cache_keys = [x[:-6] for x in os.listdir(self._cache_dir) if x.endswith('.cache')]
         
