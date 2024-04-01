@@ -8,6 +8,7 @@ def main():
     parser = argparse.ArgumentParser(description=__description__)
 
     parser.add_argument('--config-dir', dest='config_dir', help='Config file(s) directory', default='/config')
+    parser.add_argument('--certs-dir', dest='certs_dir', help='Certs directory', default='/certs')
     parser.add_argument('--data-dir', dest='data_dir', help='Data directory', default='/data')
     parser.add_argument('--hooks-dir', dest='hooks_dir', help='Hooks directory', default='/hooks')
     parser.add_argument('--log', dest='log_file', help='Log file where to write logs')
@@ -20,6 +21,7 @@ def main():
     try:
         uscert_manager = UsCertManager({
             'config_dir': args.config_dir,
+            'certs_dir': args.certs_dir,
             'data_dir': args.data_dir,
             'hooks_dir': args.hooks_dir,
             'log_file': args.log_file,

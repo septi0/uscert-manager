@@ -18,15 +18,17 @@ class UsCertManagerConfigError(Exception):
     pass
 
 class UsCertManager:
-    def __init__(self, params: dict) -> None:
-        self._logger: logging.Logger = self._gen_logger(params.get('log_file', ''), params.get('log_level', 'INFO'))
-        self._config = self._parse_config(params.get('config_dir', '/config'))
+    def __init__(self, params: dict) -> None:        
+        self._certs_dir = params.get('certs_dir', '/data')
         self._data_dir = params.get('data_dir', '/data')
         self._hooks_dir = params.get('hooks_dir', '/hooks')
         self._bin_path = params.get('bin_path', '')
 
+        self._config = self._parse_config(params.get('config_dir', '/config'))
+
+        self._logger: logging.Logger = self._gen_logger(params.get('log_file', ''), params.get('log_level', 'INFO'))
         self._certs_store = CertsStore(self._data_dir, logger=self._logger)
-        self._cert_providers = {x: providers[x](self._data_dir, self._bin_path, logger=self._logger) for x in providers}
+        self._cert_providers = {x: providers[x](self._certs_dir, self._data_dir, self._bin_path, logger=self._logger) for x in providers}
         self._pip_manager = PipManager(self._bin_path, logger=self._logger)
 
     def run(self) -> None:

@@ -8,8 +8,10 @@ class OpenSslProviderError(Exception):
     pass
 
 class OpenSslProvider:
-    def __init__(self, data_dir: str, bin_path: str, *, logger: logging.Logger) -> None:
-        self._certs_dir = os.path.join(data_dir, 'certs')
+    def __init__(self, certs_dir: str, data_dir: str, bin_path: str, *, logger: logging.Logger) -> None:
+        self._certs_dir = certs_dir
+        self._data_dir = data_dir
+        
         self._renewal_dir = os.path.join(data_dir, 'renewal_openssl')
         self._openssl_bin = 'openssl'
         

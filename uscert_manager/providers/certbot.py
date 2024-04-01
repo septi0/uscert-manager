@@ -7,9 +7,10 @@ class CertbotProviderError(Exception):
     pass
 
 class CertbotProvider:
-    def __init__(self, data_dir: str, bin_path: str, *, logger: logging.Logger) -> None:
+    def __init__(self, certs_dir: str, data_dir: str, bin_path: str, *, logger: logging.Logger) -> None:
+        self._certs_dir = certs_dir
         self._data_dir = data_dir
-        self._certs_dir = os.path.join(data_dir, 'certs')
+        
         self._certbot_bin = os.path.join(bin_path, 'certbot') if bin_path else 'certbot'
         self._cert_lifetime = 90
         
