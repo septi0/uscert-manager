@@ -22,6 +22,7 @@ setup(
     python_requires='>=3.9',
     packages=[
         'uscert_manager',
+        'uscert_manager.providers',
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
