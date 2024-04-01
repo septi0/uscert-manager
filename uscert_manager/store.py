@@ -104,7 +104,7 @@ class CertsStore:
         return res_dict
     
     def _init_db(self, db_path: str) -> None:
-        self._db = sqlite3.connect(db_path)
+        self._db = sqlite3.connect(db_path, check_same_thread=False)
         
         self._db.row_factory = sqlite3.Row
         
