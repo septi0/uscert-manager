@@ -161,7 +161,7 @@ class UsCertManager:
                 try:
                     self._generate_cert(name, config['provider'], config)
                 except Exception as e:
-                    self._logger.error(f'Error generating certs. Error: {e}')
+                    self._logger.error(f'Error generating certs. Error: {e}', exc_info=True)
             else:
                 self._logger.debug(f'Cert "{name}" is up to date')
 
