@@ -131,6 +131,10 @@ class CertbotProvider:
         le_dir = os.path.join(self._data_dir, 'live', name)
         target_dir = os.path.join(self._certs_dir, name)
         
+         # create cert dir if it doesn't exist
+        if not os.path.exists(target_dir):
+            os.makedirs(target_dir)
+        
         for file in os.listdir(le_dir):
             if file.endswith('.pem'):
                 src_file = os.path.join(le_dir, file)
