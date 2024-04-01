@@ -1,9 +1,9 @@
 from setuptools import setup
 
-# import uscertbot_manager.info without importing the package
+# import uscert_manager.info without importing the package
 info = {}
 
-with open("uscertbot_manager/info.py") as fp:
+with open("uscert_manager/info.py") as fp:
     exec(fp.read(), info)
 
 with open("README.md", "r") as f:
@@ -21,7 +21,7 @@ setup(
     author_url=info['__author_url__'],
     python_requires='>=3.9',
     packages=[
-        'uscertbot_manager',
+        'uscert_manager',
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
@@ -33,7 +33,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'uscertbot-manager = uscertbot_manager:main',
+            'uscert-manager = uscert_manager:main',
         ],
     },
     options={}

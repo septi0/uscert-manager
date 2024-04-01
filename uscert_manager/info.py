@@ -1,0 +1,8 @@
+__app_name__ = "UsCert-Manager"
+__package_name__ = "uscert-manager"
+__version__ = "0.1.2"
+__description__ = "A simple certificate manager based on certbot and openssl"
+__author__ = "Septimiu Ujica"
+__author_email__ = "me@septi.ro"
+__author_url__ = "https://www.septi.ro"
+__license__ = "GPLv3"

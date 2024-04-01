@@ -1,4 +1,3 @@
-#!/usr/bin/python3
 import uscert_manager
 
 if __name__ == '__main__':

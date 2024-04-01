@@ -1,23 +1,43 @@
 import logging
+import os
 import subprocess
 
-class CertbotError(Exception):
+class CertbotProviderError(Exception):
     pass
 
-class Certbot:
-    def __init__(self, data_dir: str, certbot_bin: str, logger: logging.Logger) -> None:
+class CertbotProvider:
+    def __init__(self, data_dir: str, bin_path: str, *, logger: logging.Logger) -> None:
         self._data_dir = data_dir
-        self._certbot_bin = certbot_bin if certbot_bin else 'certbot'
+        self._certbot_bin = os.path.join(bin_path, 'certbot') if bin_path else 'certbot'
+        self._cert_lifetime = 90
         
         self._logger = logger.getChild('certbot')
         
-    def generate_cert(self, name: str, config: dict) -> None:
+        self._available_authenticators = self._get_authenticators()
+        
+    def config_check(self, config: dict) -> None:
         required_keys = ['authenticator', 'email', 'domains']
         
         # check if all required keys are present in config
         for key in required_keys:
             if not key in config:
-                raise CertbotError(f'Config is missing required key "{key}"')
+                raise CertbotProviderError(f'Config is missing required key "{key}"')
+        
+    def get_required_packages(self, config: dict) -> list:
+        pks = []
+        
+        if not config['authenticator'] in self._available_authenticators:
+            pks.append(f'certbot-{config["authenticator"]}')
+            
+        return pks
+        
+    def generate_cert(self, name: str, config: dict) -> int:
+        required_keys = ['authenticator', 'email', 'domains']
+        
+        # check if all required keys are present in config
+        for key in required_keys:
+            if not key in config:
+                raise CertbotProviderError(f'Config is missing required key "{key}"')
         
         command = [
             'certonly',
@@ -54,19 +74,25 @@ class Certbot:
             
         self._certbot_exec(command)
         
-    def renew_certs(self) -> None:
+        return self._cert_lifetime
+        
+    def renew_cert(self, name: str) -> int:
         command = [
             'renew',
             '--non-interactive',
             '--no-random-sleep-on-renew',
+            '--force-renewal',
             '--config-dir', self._data_dir,
             '--work-dir', self._data_dir,
             '--max-log-backups', '0',
+            '--cert-name', name,
         ]
         
-        self._logger.info('Renewing certificates')
+        self._logger.info(f'Renewing certificate for "{name}"')
         
         self._certbot_exec(command)
+        
+        return self._cert_lifetime
         
     def revoke_cert(self, name: str) -> None:
         command = [
@@ -83,7 +109,7 @@ class Certbot:
         
         self._certbot_exec(command)
     
-    def get_authenticators(self) -> None:        
+    def _get_authenticators(self) -> None:        
         # get authenticators list fro certbot cli
         certbot_authenticators = self._certbot_exec(['plugins', '--authenticators'])
         
@@ -105,6 +131,6 @@ class Certbot:
         # if return code is not 0, raise error
         if exec.returncode != 0:
             error_msg = exec.stderr.decode().strip()
-            raise CertbotError(f'Certbot command failed with return code {exec.returncode} ({error_msg})')
+            raise CertbotProviderError(f'Certbot command failed with return code {exec.returncode} ({error_msg})')
         
         return exec.stdout.decode().strip()

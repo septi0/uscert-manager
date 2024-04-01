@@ -1,12 +1,13 @@
 import logging
+import os
 import subprocess
 
 class PipManagerError(Exception):
     pass
 
 class PipManager:
-    def __init__(self, pip_bin: str, logger: logging.Logger) -> None:
-        self._pip_bin = pip_bin if pip_bin else 'pip3'
+    def __init__(self, bin_path: str, logger: logging.Logger) -> None:
+        self._pip_bin = os.path.join(bin_path, 'pip') if bin_path else 'pip'
         
         self._logger = logger.getChild('pip_manager')
         

@@ -4,34 +4,38 @@ import glob
 import datetime
 import asyncio
 from configparser import ConfigParser
-from uscertbot_manager.cache import CertsCache
-from uscertbot_manager.certbot import Certbot
-from uscertbot_manager.pip_manager import PipManager
+from uscert_manager.store import CertsStore
+from uscert_manager.pip_manager import PipManager
+from uscert_manager.providers import list as providers
 
-__all__ = ['UsCertbotManager', 'UsCertbotManagerError', 'UsCertbotManagerConfigError']
+__all__ = ['UsCertManager', 'UsCertManagerError', 'UsCertManagerConfigError']
 
-class UsCertbotManagerError(Exception):
+class UsCertManagerError(Exception):
     pass
 
-class UsCertbotManagerConfigError(Exception):
+class UsCertManagerConfigError(Exception):
     pass
 
-class UsCertbotManager:
+class UsCertManager:
     def __init__(self, params: dict) -> None:
         self._logger: logging.Logger = self._gen_logger(params.get('log_file', ''), params.get('log_level', 'INFO'))
         self._config = self._parse_config(params.get('config_dir', '/config'))
         self._data_dir = params.get('data_dir', '/data')
+        self._bin_path = params.get('bin_path', '')
 
-        self._certs_cache = CertsCache(self._data_dir, logger=self._logger)
-        self._certbot = Certbot(self._data_dir, params.get('certbot_bin'), logger=self._logger)
-        self._pip_manager = PipManager(params.get('pip_bin'), logger=self._logger)
+        self._certs_store = CertsStore(self._data_dir, logger=self._logger)
+        self._cert_providers = {x: providers[x](self._data_dir, self._bin_path, logger=self._logger) for x in providers}
+        self._pip_manager = PipManager(self._bin_path, logger=self._logger)
 
     def run(self) -> None:
         user = os.getuid()
-        self._logger.info(f'Starting uscertbot-manager as user {user}')
+        self._logger.info(f'Starting uscert-manager as user {user}')
         
-        # install any required plugins
-        self._ensure_plugins()
+        # make sure config is valid
+        self._config_check()
+        
+        # make sure any additional packages are installed
+        self._ensure_packages()
         
         # ensure all certs are generated
         self._sync_certs()
@@ -41,7 +45,7 @@ class UsCertbotManager:
 
     def _parse_config(self, config_dir: str) -> dict:
         if not config_dir:
-            raise UsCertbotManagerConfigError("No config directory specified")
+            raise UsCertManagerConfigError("No config directory specified")
         
         config_files = [
             *glob.glob(os.path.join(config_dir, '*.conf')),
@@ -52,10 +56,10 @@ class UsCertbotManager:
 
         # check if any config was found
         if not config_inst.sections():
-            raise UsCertbotManagerConfigError("No config found")
+            raise UsCertManagerConfigError("No config found")
 
         config = {}
-        required_options = ['authenticator', 'domains', 'email']
+        required_options = ['provider', 'domains']
 
         for section in config_inst.sections():
             section_data = {}
@@ -63,7 +67,7 @@ class UsCertbotManager:
             # make sure we have all required options
             for option in required_options:
                 if not config_inst.has_option(section, option):
-                    raise UsCertbotManagerConfigError(f'Config section "{section}" is missing required option "{option}"')
+                    raise UsCertManagerConfigError(f'Config section "{section}" is missing required option "{option}"')
 
             for key, value in config_inst.items(section):
                 if key == 'domains':
@@ -105,56 +109,95 @@ class UsCertbotManager:
 
         return logger
     
-    def _ensure_plugins(self) -> None:
-        # get all unique authenticators from config
-        conf_authenticators = set([x['authenticator'] for x in self._config.values()])
+    def _config_check(self) -> None:
+        self._logger.info('Checking config ...')
         
-        certbot_authenticators = self._certbot.get_authenticators()
+        for config in self._config.values():
+            provider = config.get('provider', '')
+            
+            if not provider in self._cert_providers:
+                raise UsCertManagerConfigError(f'Provider "{provider}" not found')
+            
+            self._cert_providers[provider].config_check(config)
+            
+        self._logger.info('Config check passed')
+    
+    def _ensure_packages(self) -> None:
+        self._logger.info('Ensuring required packages are installed')
         
-        # loop through all config authenticators and ensure they are installed
-        for authenticator in conf_authenticators:
-            if not authenticator in certbot_authenticators:
-                self._logger.info(f'Installing plugin certbot-"{authenticator}"')
+        pks_needed = set()
+        
+        for config in self._config.values():
+            provider = config['provider']
+            
+            pks = self._cert_providers[provider].get_required_packages(config)
+            
+            if pks:
+                pks_needed.update(pks)
                 
-                self._pip_manager.install(f'certbot-{authenticator}')
+        self._logger.info(f'Packages needed: {pks_needed}. Installing them ...')
+                
+        for pk in pks_needed:
+            self._pip_manager.install(pk)
     
     def _sync_certs(self) -> None:
-        cached_certs = self._certs_cache.get_all()
+        certs = self._certs_store.get_all()
         
         # loop through all cached certs and check if they are still present in config
-        for name in cached_certs:
+        for cert in certs:
             
-            if not name in self._config:
-                self._logger.debug(f'Cert group "{name}" is no longer in config. Revoke needed')
+            if not cert['name'] in self._config:
+                self._logger.debug(f"Cert \"{cert['name']}\" is no longer in config. Revoke needed")
                 
-                self._revoke_cert(name)
+                self._revoke_cert(cert['name'], cert['provider'])
         
         # loop through all cert configured and ensure they have a cert
-        for group, config in self._config.items():
-            cache_status = self._certs_cache.check(group, config['domains'])
+        for name, config in self._config.items():
+            record_status = self._certs_store.check(name, config['domains'])
 
-            if cache_status == CertsCache.CACHE_MISS:
-                self._logger.debug(f'Cert group "{group}" is stale. (re)gen needed')
+            if record_status == CertsStore.CACHE_MISS:
+                self._logger.debug(f'Cert "{name}" is stale. (re)gen needed')
                 
                 try:
-                    self._generate_cert(group, config)
+                    self._generate_cert(name, config['provider'], config)
                 except Exception as e:
                     self._logger.error(f'Error generating certs. Error: {e}')
             else:
-                self._logger.debug(f'Cert group "{group}" is up to date')
+                self._logger.debug(f'Cert "{name}" is up to date')
 
-    def _generate_cert(self, group: str, config: dict) -> None:
-        self._certbot.generate_cert(group, config)
+    def _generate_cert(self, name: str, provider: str, config: dict) -> None:
+        lifetime = self._cert_providers[provider].generate_cert(name, config)
         
-        self._certs_cache.set(group, config['domains'])
+        data = {
+            'provider': provider,
+            'domains': config['domains'],
+            'expiry_date': (datetime.datetime.now() + datetime.timedelta(days=lifetime)).isoformat(),
+        }
+        
+        self._certs_store.replace(name, **data)
         
     def _renew_certs(self) -> None:
-        self._certbot.renew_certs()
+        certs = self._certs_store.get_due_certs(30)
         
-    def _revoke_cert(self, name: str) -> None:
-        self._certbot.revoke_cert(name)
+        # loop through all certs that are due for renewal
+        for cert in certs:
+            self._logger.debug(f"Cert \"{cert['name']}\" is due for renewal")
+            
+            name = cert['name']
+            provider = cert['provider']
+                
+            lifetime = self._cert_providers[provider].renew_cert(name)
+            
+            data = {
+                'expiry_date': (datetime.datetime.now() + datetime.timedelta(days=lifetime)).isoformat(),
+            }
+            
+            self._certs_store.update(name, **data)
         
-        self._certs_cache.remove(name)
+    def _revoke_cert(self, name: str, provider: str) -> None:
+        self._cert_providers[provider].revoke_cert(name)
+        
+        self._certs_store.remove(name)
         
     def _run_forever(self) -> None:
         loop = asyncio.new_event_loop()
