@@ -129,11 +129,11 @@ class OpenSslProvider:
         # create subprocess
         exec = subprocess.run(cmd_to_exec, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         
-        self._logger.debug(f'Openssl command return code: {exec.returncode}')
+        self._logger.debug(f'openssl command return code: {exec.returncode}')
         
         # if return code is not 0, raise error
         if exec.returncode != 0:
             error_msg = exec.stderr.decode().strip()
-            raise OpenSslProviderError(f'Openssl command failed with return code {exec.returncode} ({error_msg})')
+            raise OpenSslProviderError(f'openssl command failed with return code {exec.returncode} ({error_msg})')
         
         return exec.stdout.decode().strip()

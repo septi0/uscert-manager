@@ -9,6 +9,7 @@ def main():
 
     parser.add_argument('--config-dir', dest='config_dir', help='Config file(s) directory', default='/config')
     parser.add_argument('--data-dir', dest='data_dir', help='Data directory', default='/data')
+    parser.add_argument('--hooks-dir', dest='hooks_dir', help='Hooks directory', default='/hooks')
     parser.add_argument('--log', dest='log_file', help='Log file where to write logs')
     parser.add_argument('--log-level', dest='log_level', help='Log level', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], default='INFO')
     parser.add_argument('--bin-path', dest='bin_path', help='Path to binaries')
@@ -20,6 +21,7 @@ def main():
         uscert_manager = UsCertManager({
             'config_dir': args.config_dir,
             'data_dir': args.data_dir,
+            'hooks_dir': args.hooks_dir,
             'log_file': args.log_file,
             'log_level': args.log_level,
             'bin_path': args.bin_path,

@@ -3,6 +3,7 @@ import logging
 import glob
 import datetime
 import asyncio
+import subprocess
 from configparser import ConfigParser
 from uscert_manager.store import CertsStore
 from uscert_manager.pip_manager import PipManager
@@ -21,6 +22,7 @@ class UsCertManager:
         self._logger: logging.Logger = self._gen_logger(params.get('log_file', ''), params.get('log_level', 'INFO'))
         self._config = self._parse_config(params.get('config_dir', '/config'))
         self._data_dir = params.get('data_dir', '/data')
+        self._hooks_dir = params.get('hooks_dir', '/hooks')
         self._bin_path = params.get('bin_path', '')
 
         self._certs_store = CertsStore(self._data_dir, logger=self._logger)
@@ -149,7 +151,10 @@ class UsCertManager:
             if not cert['name'] in self._config:
                 self._logger.debug(f"Cert \"{cert['name']}\" is no longer in config. Revoke needed")
                 
-                self._revoke_cert(cert['name'], cert['provider'])
+                try:
+                    self._revoke_cert(cert['name'], cert['provider'])
+                except Exception as e:
+                    self._logger.exception(f'Error revoking certs. Error: {e}', exc_info=True)
         
         # loop through all cert configured and ensure they have a cert
         for name, config in self._config.items():
@@ -161,9 +166,24 @@ class UsCertManager:
                 try:
                     self._generate_cert(name, config['provider'], config)
                 except Exception as e:
-                    self._logger.error(f'Error generating certs. Error: {e}', exc_info=True)
+                    self._logger.exception(f'Error generating certs. Error: {e}', exc_info=True)
             else:
                 self._logger.debug(f'Cert "{name}" is up to date')
+                
+    def _renew_certs(self) -> None:
+        certs = self._certs_store.get_due_certs(30)
+        
+        # loop through all certs that are due for renewal
+        for cert in certs:
+            self._logger.debug(f"Cert \"{cert['name']}\" is due for renewal")
+            
+            name = cert['name']
+            provider = cert['provider']
+                
+            try:
+                self._renew_cert(name, provider)
+            except Exception as e:
+                self._logger.exception(f'Error renewing certs. Error: {e}', exc_info=True)
 
     def _generate_cert(self, name: str, provider: str, config: dict) -> None:
         lifetime = self._cert_providers[provider].generate_cert(name, config)
@@ -176,28 +196,50 @@ class UsCertManager:
         
         self._certs_store.replace(name, **data)
         
-    def _renew_certs(self) -> None:
-        certs = self._certs_store.get_due_certs(30)
+        self._run_hook('post_cert_gen', name)
+            
+    def _renew_cert(self, name: str, provider: str) -> None:
+        lifetime = self._cert_providers[provider].renew_cert(name)
+            
+        data = {
+            'expiry_date': (datetime.datetime.now() + datetime.timedelta(days=lifetime)).isoformat(),
+        }
         
-        # loop through all certs that are due for renewal
-        for cert in certs:
-            self._logger.debug(f"Cert \"{cert['name']}\" is due for renewal")
-            
-            name = cert['name']
-            provider = cert['provider']
-                
-            lifetime = self._cert_providers[provider].renew_cert(name)
-            
-            data = {
-                'expiry_date': (datetime.datetime.now() + datetime.timedelta(days=lifetime)).isoformat(),
-            }
-            
-            self._certs_store.update(name, **data)
+        self._certs_store.update(name, **data)
+        
+        self._run_hook('post_cert_gen', name)
         
     def _revoke_cert(self, name: str, provider: str) -> None:
         self._cert_providers[provider].revoke_cert(name)
         
         self._certs_store.remove(name)
+        
+        self._run_hook('post_cert_revoke', name)
+        
+    def _run_hook(self, hook: str, name: str) -> None:
+        hook_dir = os.path.join(self._hooks_dir, hook)
+        
+        if not os.path.exists(hook_dir):
+            return
+        
+        self._logger.info(f'Running hook "{hook}" for "{name}"')
+        
+        # call run-parts on hook dir
+        cmd_to_exec = ['run-parts', hook_dir, '--arg', name]
+        
+        self._logger.debug(f'Executing command: {cmd_to_exec}')
+        
+        # create subprocess
+        exec = subprocess.run(cmd_to_exec, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        
+        self._logger.debug(f'run-parts command return code: {exec.returncode}')
+        
+        # if return code is not 0, raise error
+        if exec.returncode != 0:
+            error_msg = exec.stderr.decode().strip()
+            raise UsCertManagerError(f'Error running hook "{hook}": {error_msg}')
+        
+        return exec.stdout.decode().strip()
         
     def _run_forever(self) -> None:
         loop = asyncio.new_event_loop()

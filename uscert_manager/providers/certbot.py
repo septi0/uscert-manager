@@ -170,11 +170,11 @@ class CertbotProvider:
         # create subprocess
         exec = subprocess.run(cmd_to_exec, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         
-        self._logger.debug(f'Certbot command return code: {exec.returncode}')
+        self._logger.debug(f'certbot command return code: {exec.returncode}')
         
         # if return code is not 0, raise error
         if exec.returncode != 0:
             error_msg = exec.stderr.decode().strip()
-            raise CertbotProviderError(f'Certbot command failed with return code {exec.returncode} ({error_msg})')
+            raise CertbotProviderError(f'certbot command failed with return code {exec.returncode} ({error_msg})')
         
         return exec.stdout.decode().strip()
