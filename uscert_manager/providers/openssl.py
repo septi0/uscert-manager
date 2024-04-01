@@ -1,7 +1,7 @@
 import logging
 import os
 import json
-import datetime
+import shutil
 import subprocess
 
 class OpenSslProviderError(Exception):
@@ -68,15 +68,15 @@ class OpenSslProvider:
         self._openssl_exec(command)
         
         # write generation config to renewal config file
-        renewal_config_file = os.path.join(self._renewal_dir, f'{name}.conf')
         renewal_config_data = {
             'name': name,
             'domains': config['domains'],
             'days': lifetime,
         }
         
-        with open(renewal_config_file, 'w') as f:
-            f.write(json.dumps(renewal_config_data))
+        self._write_renewal_config(name, renewal_config_data)
+        
+        self._gen_cert_variants(name)
             
         return lifetime
     
@@ -99,17 +99,27 @@ class OpenSslProvider:
         
         if os.path.exists(target_dir):
             self._logger.info(f'Revoking certificate for "{name}"')
-            # remove cert dir and all files
-            for file in os.listdir(target_dir):
-                os.remove(os.path.join(target_dir, file))
-                
-            os.rmdir(target_dir)
+            shutil.rmtree(target_dir)
             
         # remove renewal config
         renewal_config = os.path.join(self._renewal_dir, f'{name}.conf')
         
         if os.path.exists(renewal_config):
             os.remove(renewal_config)
+            
+    def _write_renewal_config(self, name: str, data: dict) -> None:
+        # write renewal config file
+        with open(os.path.join(self._renewal_dir, f'{name}.conf'), 'w') as f:
+            f.write(json.dumps(data))
+            
+    def _gen_cert_variants(self, name: str) -> None:
+        target_dir = os.path.join(self._certs_dir, name)
+        
+        # create a combined.pem file
+        with open(os.path.join(target_dir, 'combined.pem'), 'wb') as f:
+            for file in ['cert.pem', 'private.pem']:
+                with open(os.path.join(target_dir, file), 'rb') as src:
+                    shutil.copyfileobj(src, f)
     
     def _openssl_exec(self, cmd: list) -> str:
         cmd_to_exec = [self._openssl_bin, *cmd]

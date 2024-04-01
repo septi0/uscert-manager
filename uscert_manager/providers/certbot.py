@@ -1,5 +1,6 @@
 import logging
 import os
+import shutil
 import subprocess
 
 class CertbotProviderError(Exception):
@@ -8,6 +9,7 @@ class CertbotProviderError(Exception):
 class CertbotProvider:
     def __init__(self, data_dir: str, bin_path: str, *, logger: logging.Logger) -> None:
         self._data_dir = data_dir
+        self._certs_dir = os.path.join(data_dir, 'certs')
         self._certbot_bin = os.path.join(bin_path, 'certbot') if bin_path else 'certbot'
         self._cert_lifetime = 90
         
@@ -75,6 +77,8 @@ class CertbotProvider:
             
         self._certbot_exec(command)
         
+        self._copy_cert_files(name)
+        
         return self._cert_lifetime
         
     def renew_cert(self, name: str) -> int:
@@ -93,6 +97,8 @@ class CertbotProvider:
         
         self._certbot_exec(command)
         
+        self._copy_cert_files(name)
+        
         return self._cert_lifetime
         
     def revoke_cert(self, name: str) -> None:
@@ -109,6 +115,8 @@ class CertbotProvider:
         self._logger.info(f'Removing certificate "{name}"')
         
         self._certbot_exec(command)
+        
+        self._remove_cert_files(name)
     
     def _get_authenticators(self) -> None:        
         # get authenticators list fro certbot cli
@@ -118,6 +126,37 @@ class CertbotProvider:
         certbot_authenticators = [x.lstrip('*').strip() for x in certbot_authenticators.split('\n') if x.startswith('* ')]
         
         return certbot_authenticators
+
+    def _copy_cert_files(self, name: str) -> None:
+        le_dir = os.path.join(self._data_dir, 'live', name)
+        target_dir = os.path.join(self._certs_dir, name)
+        
+        for file in os.listdir(le_dir):
+            if file.endswith('.pem'):
+                src_file = os.path.join(le_dir, file)
+                dst_file = os.path.join(target_dir, file)
+                
+                self._logger.debug(f'Copying "{src_file}" to "{dst_file}"')
+                
+                shutil.copyfile(src_file, dst_file)
+                
+        self._gen_cert_variants(name)
+                
+    def _remove_cert_files(self, name: str) -> None:
+        target_dir = os.path.join(self._certs_dir, name)
+        
+        if os.path.exists(target_dir):
+            self._logger.debug(f'Removing certificate files for "{name}"')
+            shutil.rmtree(target_dir)
+            
+    def _gen_cert_variants(self, name: str) -> None:
+        target_dir = os.path.join(self._certs_dir, name)
+        
+        # create a combined.pem file
+        with open(os.path.join(target_dir, 'combined.pem'), 'wb') as f:
+            for file in ['fullchain.pem', 'privkey.pem']:
+                with open(os.path.join(target_dir, file), 'rb') as src:
+                    shutil.copyfileobj(src, f)
     
     def _certbot_exec(self, cmd: list) -> str:
         cmd_to_exec = [self._certbot_bin, *cmd]
