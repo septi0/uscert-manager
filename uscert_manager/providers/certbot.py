@@ -52,6 +52,7 @@ class CertbotProvider:
         ]
         
         disallowed_config_opts = [
+            'provider',
             'non-interactive',
             'agree-tos',
             'renew-with-new-domains',
