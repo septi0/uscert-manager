@@ -1,0 +1,13 @@
+[Unit]
+Description=UsCert-Manager
+
+[Service]
+Type=simple
+User=root
+Group=root
+ExecStart=/usr/bin/uscert-manager --log=/var/log/uscert-manager/uscert-manager.log
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -18,13 +18,15 @@ class UsCertManagerConfigError(Exception):
     pass
 
 class UsCertManager:
-    def __init__(self, params: dict) -> None:        
-        self._certs_dir = params.get('certs_dir', '/data')
-        self._data_dir = params.get('data_dir', '/data')
-        self._hooks_dir = params.get('hooks_dir', '/hooks')
+    def __init__(self, params: dict) -> None:
+        self._config_dirs = self._gen_config_dirs('', params.get('config_dirs', ''))
+        self._hooks_dirs = self._gen_config_dirs('hooks', params.get('hooks_dirs', ''))
+        
+        self._certs_dir = self._gen_data_dir('certs', params.get('certs_dir', ''))
+        self._data_dir = self._gen_data_dir('data', params.get('data_dir', ''))
         self._bin_path = params.get('bin_path', '')
-
-        self._config = self._parse_config(params.get('config_dir', '/config'))
+        
+        self._config = self._parse_config()
 
         self._logger: logging.Logger = self._gen_logger(params.get('log_file', ''), params.get('log_level', 'INFO'))
         self._certs_store = CertsStore(self._data_dir, logger=self._logger)
@@ -46,14 +48,36 @@ class UsCertManager:
         
         # run forever as a service
         self._run_forever()
-
-    def _parse_config(self, config_dir: str) -> dict:
-        if not config_dir:
-            raise UsCertManagerConfigError("No config directory specified")
         
-        config_files = [
-            *glob.glob(os.path.join(config_dir, '*.conf')),
+    def _gen_config_dirs(self, name: str, dirs: list) -> list:
+        if dirs:
+            return dirs
+        
+        return [
+            os.path.join('/etc/uscert-manager', name),
+            os.path.join('/etc/opt/uscert-manager', name),
+            os.path.expanduser(os.path.join('~/.config/uscert-manager', name)),
         ]
+    
+    def _gen_data_dir(self, name: str, dir: str) -> str:
+        if dir:
+            return dir
+        
+        if not os.path.exists('/var/opt/uscert-manager'):
+            os.makedirs('/var/opt/uscert-manager')
+        
+        return os.path.join('/var/opt/uscert-manager', name)
+
+    def _parse_config(self) -> dict:
+        config_files = []
+        
+        for config_dir in self._config_dirs:
+            dir_files = [
+                os.path.join(config_dir, 'config.conf'),
+                *glob.glob(os.path.join(config_dir, 'config.d', '*.conf')),
+            ]
+            
+            config_files += dir_files
 
         config_inst = ConfigParser()
         config_inst.read(config_files)
@@ -219,12 +243,16 @@ class UsCertManager:
         self._run_hook('post_cert_revoke', name)
         
     def _run_hook(self, hook: str, name: str) -> None:
-        hook_dir = os.path.join(self._hooks_dir, hook)
+        self._logger.info(f'Running hook "{hook}" for "{name}"')
+        
+        for hook_dir in self._hooks_dirs:
+            self._exec_dir_hooks(hook, name, hook_dir)
+            
+    def _exec_dir_hooks(self, hook: str, name: str, hook_dir: str) -> None:
+        hook_dir = os.path.join(hook_dir, hook)
         
         if not os.path.exists(hook_dir):
             return
-        
-        self._logger.info(f'Running hook "{hook}" for "{name}"')
         
         # call run-parts on hook dir
         cmd_to_exec = ['run-parts', hook_dir, '--arg', name]

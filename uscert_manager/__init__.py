@@ -7,23 +7,23 @@ def main():
     # get args from command line
     parser = argparse.ArgumentParser(description=__description__)
 
-    parser.add_argument('--config-dir', dest='config_dir', help='Config file(s) directory', default='/config')
-    parser.add_argument('--certs-dir', dest='certs_dir', help='Certs directory', default='/certs')
-    parser.add_argument('--data-dir', dest='data_dir', help='Data directory', default='/data')
-    parser.add_argument('--hooks-dir', dest='hooks_dir', help='Hooks directory', default='/hooks')
+    parser.add_argument('--config-dir', dest='config_dirs', help='Config file(s) directory', action='append')
+    parser.add_argument('--hooks-dir', dest='hooks_dirs', help='Hooks directory', action='append')
+    parser.add_argument('--certs-dir', dest='certs_dir', help='Certs directory')
+    parser.add_argument('--data-dir', dest='data_dir', help='Data directory',)
     parser.add_argument('--log', dest='log_file', help='Log file where to write logs')
     parser.add_argument('--log-level', dest='log_level', help='Log level', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], default='INFO')
-    parser.add_argument('--bin-path', dest='bin_path', help='Path to binaries')
+    parser.add_argument('--bin-path', dest='bin_path', help='Path to binaries (useful for virtualenvs)')
     parser.add_argument('--version', action='version', version=f'{__app_name__} {__version__}')
 
     args = parser.parse_args()
 
     try:
         uscert_manager = UsCertManager({
-            'config_dir': args.config_dir,
+            'config_dirs': args.config_dirs,
+            'hooks_dirs': args.hooks_dirs,
             'certs_dir': args.certs_dir,
             'data_dir': args.data_dir,
-            'hooks_dir': args.hooks_dir,
             'log_file': args.log_file,
             'log_level': args.log_level,
             'bin_path': args.bin_path,
