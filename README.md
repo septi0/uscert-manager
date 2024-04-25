@@ -98,8 +98,8 @@ After that, run the following commands:
 
 ```
 systemctl daemon-reload
-systemctl enable usbackup.service
-systemctl start usbackup.service
+systemctl enable uscert-manager.service
+systemctl start uscert-manager.service
 ```
 
 ## Disclaimer
