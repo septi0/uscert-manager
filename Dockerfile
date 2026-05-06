@@ -1,0 +1,31 @@
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y iputils-ping iproute2 openssh-client procps; \
+    rm -rf /var/lib/apt/lists/*
+
+COPY uscert_manager ./uscert_manager
+COPY README.md requirements.txt setup.py ./
+COPY docker/entrypoint.sh /usr/local/bin/
+COPY docker/ssh_config /root/.ssh/config
+
+RUN pip install --upgrade .; \
+    ln -s /usr/local/bin/uscert-manager /usr/local/bin/run; \
+    chmod +x /usr/local/bin/entrypoint.sh
+
+VOLUME ["/config", "/certs", "/data", "/hooks", "/secrets"]
+
+WORKDIR /config
+
+COPY ./docker/bin/ /usr/local/bin/
+
+RUN chmod +x /usr/local/bin/app-*; \
+    chmod +x /usr/local/bin/uscert-manager-*
+
+ENTRYPOINT ["app-entrypoint"]
+
+CMD []

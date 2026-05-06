@@ -6,12 +6,16 @@ info = {}
 with open("uscert_manager/info.py") as fp:
     exec(fp.read(), info)
 
+version = ""
+with open("uscert_manager/VERSION", "r") as f:
+    version = f.read().strip()
+
 with open("README.md", "r") as f:
     long_description = f.read()
 
 setup(
     name=info['__package_name__'],
-    version=info['__version__'],
+    version=version,
     description=info['__description__'],
     long_description=long_description,
     long_description_content_type="text/markdown",

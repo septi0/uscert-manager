@@ -1,7 +1,12 @@
+import os
 import sys
 import argparse
 from uscert_manager.manager import UsCertManager, UsCertManagerError, UsCertManagerConfigError
-from uscert_manager.info import __app_name__, __version__, __description__, __author__, __author_email__, __author_url__, __license__
+from uscert_manager.info import __app_name__, __description__, __author__, __author_email__, __author_url__, __license__
+
+__version__ = ""
+with open(os.path.join(os.path.dirname(__file__), "VERSION"), "r") as f:
+    __version__ = f.read().strip()
 
 def main():
     # get args from command line

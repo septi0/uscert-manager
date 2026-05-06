@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# routines that are executed on every startup
+
+if [ -e /.firstRunComplete ]; then
+    exit 0
+fi
+
+# routines that are executed only on the first startup
+
+echo "Starting app init ..."
+
+# initialization config goes here
+
+touch /.firstRunComplete
+echo "App init completed!"
+
+exit 0
