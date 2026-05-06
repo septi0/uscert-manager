@@ -5,7 +5,7 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y iputils-ping iproute2 openssh-client procps; \
+RUN apt-get update && apt-get install -y ca-certificates iputils-ping iproute2 nano less telnet curl socat procps; \
     rm -rf /var/lib/apt/lists/*
 
 COPY uscert_manager ./uscert_manager
@@ -18,8 +18,6 @@ RUN pip install --upgrade .; \
     chmod +x /usr/local/bin/entrypoint.sh
 
 VOLUME ["/config", "/certs", "/data", "/hooks", "/secrets"]
-
-WORKDIR /config
 
 COPY ./docker/bin/ /usr/local/bin/
 
