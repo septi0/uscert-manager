@@ -10,16 +10,13 @@ RUN apt-get update && apt-get install -y ca-certificates iputils-ping iproute2 n
 
 COPY uscert_manager ./uscert_manager
 COPY README.md requirements.txt setup.py ./
-COPY docker/entrypoint.sh /usr/local/bin/
-COPY docker/ssh_config /root/.ssh/config
+COPY ./docker/bin/ /usr/local/bin/
 
 RUN pip install --upgrade .; \
     ln -s /usr/local/bin/uscert-manager /usr/local/bin/run; \
     chmod +x /usr/local/bin/entrypoint.sh
 
 VOLUME ["/config", "/certs", "/data", "/hooks", "/secrets"]
-
-COPY ./docker/bin/ /usr/local/bin/
 
 RUN chmod +x /usr/local/bin/app-*; \
     chmod +x /usr/local/bin/uscert-manager-*
