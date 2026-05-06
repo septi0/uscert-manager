@@ -12,7 +12,7 @@ COPY uscert_manager ./uscert_manager
 COPY README.md setup.py ./
 COPY ./docker/bin/ /usr/local/bin/
 
-RUN pip install --upgrade .; \
+RUN pip install --upgrade . certbot; \
     ln -s /usr/local/bin/uscert-manager /usr/local/bin/run; \
     chmod +x /usr/local/bin/app-*; \
     chmod +x /usr/local/bin/uscert-manager-*
