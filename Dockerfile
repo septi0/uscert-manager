@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y ca-certificates iputils-ping iproute2 n
     rm -rf /var/lib/apt/lists/*
 
 COPY uscert_manager ./uscert_manager
-COPY README.md requirements.txt setup.py ./
+COPY README.md setup.py ./
 COPY ./docker/bin/ /usr/local/bin/
 
 RUN pip install --upgrade .; \
