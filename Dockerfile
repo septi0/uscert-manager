@@ -14,12 +14,10 @@ COPY ./docker/bin/ /usr/local/bin/
 
 RUN pip install --upgrade .; \
     ln -s /usr/local/bin/uscert-manager /usr/local/bin/run; \
-    chmod +x /usr/local/bin/entrypoint.sh
+    chmod +x /usr/local/bin/app-*; \
+    chmod +x /usr/local/bin/uscert-manager-*
 
 VOLUME ["/config", "/certs", "/data", "/hooks", "/secrets"]
-
-RUN chmod +x /usr/local/bin/app-*; \
-    chmod +x /usr/local/bin/uscert-manager-*
 
 ENTRYPOINT ["app-entrypoint"]
 
